@@ -1,0 +1,26 @@
+[api]
+host = "0.0.0.0"
+port = 8000
+debug = true
+
+[postgres]
+host = "localhost"
+port = 5432
+database = "postgres"
+user = "admin"
+password = "admin"
+echo = true
+
+[redis]
+host = "localhost"
+# password = null
+
+[telegram]
+TELEGRAM_API_KEY = "5511764565:AAEKLFWxhsVmvsW692-I6FHT8xx9ZS_G4uo"
+TELEGRAM_WEBHOOK_HOST = "https://ef70-178-129-114-103.ngrok-free.app"
+TELEGRAM_WEBHOOK_PATH = "/webhooks/telegram"
+
+[logging]
+level = "DEBUG"
+render_json_logs = false
+# path = "./logs/logs.log"

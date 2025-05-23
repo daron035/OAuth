@@ -1,0 +1,42 @@
+services:
+  api:
+    profiles: [ "api", "watch" ]
+    container_name: oauth.api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    volumes:
+      - ./config:/app/config:ro
+    networks:
+      - some.postgres.network
+      - some.redis.network
+    environment:
+      - CONFIG_PATH=${CONFIG_PATH:-./config/prod_config.template.toml}
+    healthcheck:
+      disable: true
+      test: ["CMD-SHELL", "curl -fsSL http://localhost:8000/healthcheck/"]
+      interval: 10s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+    develop:
+      # Create a `watch` configuration to update the appl
+      # https://docs.docker.com/compose/file-watch/#compose-watch-versus-bind-mounts
+      watch:
+        # Sync the working directory with the `/app` directory in the container
+        - action: sync+restart
+          path: .
+          target: /app
+          ignore:
+            - .venv/
+        # Rebuild the image on changes to the `pyproject.toml`
+        - action: rebuild
+          path: ./pyproject.toml
+
+networks:
+  some.postgres.network:
+    external: true
+  some.redis.network:
+    external: true
