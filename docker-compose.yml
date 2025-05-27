@@ -1,0 +1,238 @@
+services:
+  api:
+    profiles: [ "all", "api", "watch" ]
+    container_name: oauth.api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    volumes:
+      - ./config:/app/config:ro
+    networks:
+      - oauth.postgres.network
+      - oauth.redis.network
+      - oauth.grafana.network
+    environment:
+      - CONFIG_PATH=${CONFIG_PATH:-./config/prod_config.template.toml}
+    healthcheck:
+      disable: true
+      test: ["CMD-SHELL", "curl -fsSL http://localhost:8000/healthcheck/"]
+      interval: 10s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+    develop:
+      # Create a `watch` configuration to update the appl
+      # https://docs.docker.com/compose/file-watch/#compose-watch-versus-bind-mounts
+      watch:
+        # Sync the working directory with the `/app` directory in the container
+        - action: sync+restart
+          path: .
+          target: /app
+          ignore:
+            - .venv/
+        # Rebuild the image on changes to the `pyproject.toml`
+        - action: rebuild
+          path: ./pyproject.toml
+
+  redis:
+    profiles: [ "all", "api" ]
+    image: redis:7.4
+    container_name: oauth.redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - oauth.redis.data:/data
+      - ./redis.conf:/etc/redis/redis.conf:ro
+    networks:
+      - oauth.redis.network
+    command: ["redis-server", "/etc/redis/redis.conf"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    profiles: [ "all", "api", "migration" ]
+    container_name: oauth.postgres
+    image: "postgres:17rc1-alpine"
+    hostname: oauth.postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    networks:
+      - oauth.postgres.network
+    environment:
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      POSTGRES_USER: ${POSTGRES_USER:-$USER}
+      POSTGRES_DB: ${POSTGRES_DB:-$USER}
+    volumes:
+      - oauth.postgres.data:/var/lib/postgresql/data:rw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+
+  postgres_migration:
+    profiles: [ "all", "migration" ]
+    container_name: oauth.postgres_migration
+    build:
+      context: .
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - oauth.postgres.network
+    volumes:
+      - ./config:/app/config:ro
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./src/infrastructure/postgres/migrations:/app/src/infrastructure/postgres/migrations:ro
+    environment:
+      - CONFIG_PATH=${CONFIG_PATH:-./config/prod_config.toml}
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+
+  postgres_backup:
+    profiles: [ "all", "api" ]
+    container_name: oauth.postgres_backup
+    image: prodrigestivill/postgres-backup-local:15-alpine
+    networks:
+      - oauth.postgres.network
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-$USER}
+      - POSTGRES_USER=${POSTGRES_USER:-$USER}
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - BACKUP_DIR=/backups
+      - POSTGRES_EXTRA_OPTS=-Z6 --schema=public --blobs
+      - SCHEDULE=${POSTGRES_BACKUP_SCHEDULE:-@daily}
+      - HEALTHCHECK_PORT=8080
+    volumes:
+      - ${POSTGRES_BACKUP_DIR:-./.backups/postgres}:/backups
+
+  pgadmin:
+    profiles: [ "all", "api" ]
+    container_name: oauth.pgadmin4
+    image: dpage/pgadmin4
+    restart: unless-stopped
+    networks:
+      - oauth.postgres.network
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+
+  grafana:
+    profiles: [ "all", "grafana" ]
+    image: grafana/grafana:12.0.1
+    container_name: oauth.grafana
+    hostname: oauth.grafana
+    restart: unless-stopped
+    expose:
+      - "3000"
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - oauth.grafana.network
+    volumes:
+      - oauth.grafana.data:/var/lib/grafana:rw
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:rw
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - VIRTUAL_HOST=oauth.grafana
+      - NETWORK_ACCESS=internal
+      - VIRTUAL_PORT=3000
+
+  loki:
+    profiles: [ "all", "grafana" ]
+    image: grafana/loki:3.5.1
+    container_name: oauth.loki
+    hostname: oauth.loki
+    expose:
+      - "3100"
+    volumes:
+      - oauth.loki.data:/tmp/:rw
+      - ./monitoring/loki/config.yml:/etc/loki/config.yml:ro
+    command: -config.file=/etc/loki/config.yml
+    restart: unless-stopped
+    networks:
+      - oauth.grafana.network
+
+  vector:
+    profiles: [ "all", "grafana" ]
+    image: timberio/vector:0.47.0-alpine
+    container_name: oauth.vector
+    hostname: oauth.vector
+    restart: unless-stopped
+    expose:
+      - "8383"
+    networks:
+      - oauth.grafana.network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/vector/vector.toml:/etc/vector/vector.toml:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  prometheus:
+    profiles: [ "all", "prometheus" ]
+    image: prom/prometheus:v3.4.0
+    container_name: oauth.prometheus
+    restart: unless-stopped
+    ports:
+      - 9090:9090
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - oauth.grafana.network
+
+  node_exporter:
+    profiles: [ "all", "prometheus" ]
+    image: prom/node-exporter:v1.9.1
+    container_name: oauth.node_exporter
+    hostname: oauth.node_exporter
+    restart: unless-stopped
+    pid: "host"
+    expose:
+      - 9100
+    ports:
+      - 9100:9100
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.ignored-mount-points=^/(syss|proc|dev|host|etc)($$|/)"
+    networks:
+      - oauth.grafana.network
+
+volumes:
+  oauth.postgres.data:
+    name: oauth.postgres.data
+  oauth.redis.data:
+    name: oauth.redis.data
+  oauth.grafana.data:
+    name: oauth.grafana.data
+  oauth.loki.data:
+    name: oauth.loki.data
+
+networks:
+  oauth.postgres.network:
+    name: oauth.postgres.network
+  oauth.redis.network:
+    name: oauth.redis.network
+  oauth.grafana.network:
+    name: oauth.grafana.network

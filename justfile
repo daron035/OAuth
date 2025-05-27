@@ -26,7 +26,7 @@ uvicorn:
 
 # Build docker image
 build:
-	docker compose build
+	docker compose --profile all build
 
 # Run app in docker container
 up:
@@ -35,6 +35,11 @@ up:
 # Stop docker containers
 down:
 	docker compose --profile api down
+
+# Up monitoring stack
+monitoring:
+  docker compose --profile grafana --profile prometheus up --build -d
+
 
 # Use Compose Watch
 watch mode="build":

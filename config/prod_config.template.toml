@@ -4,7 +4,7 @@ port = 8000
 debug = true
 
 [postgres]
-host = "some.postgres"
+host = "oauth.postgres"
 port = 5432
 database = "postgres"
 user = "admin"
@@ -12,7 +12,7 @@ password = "admin"
 echo = true
 
 [redis]
-host = "some.redis"
+host = "oauth.redis"
 # password = null
 
 [telegram]
