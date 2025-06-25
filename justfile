@@ -1,5 +1,6 @@
 package_dir := "src"
 
+
 # Show help message
 help:
   just -l
@@ -40,7 +41,6 @@ down:
 monitoring:
   docker compose --profile grafana --profile prometheus up --build -d
 
-
 # Use Compose Watch
 watch mode="build":
     #!/usr/bin/env bash
@@ -60,6 +60,48 @@ watch mode="build":
             exit 1
             ;;
     esac
+
+# MinIO Client
+mc command bucket='test-bucket':
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    case "{{command}}" in
+      "alias")
+        echo -e "\033[1mmc alias set local http://localhost:9000 minioadmin minioadmin\033[0m"
+        echo "Add MinIO service under 'local' alias."
+        mc alias set local http://localhost:9000 minioadmin minioadmin
+        ;;
+      "mb")
+        echo -e "\033[1mmc mb local/{{bucket}}\033[0m"
+        echo "Create a new bucket: {{bucket}}"
+        mc mb local/{{bucket}}
+        ;;
+      "ls")
+        echo -e "\033[1mmc ls local\033[0m"
+        echo "List all buckets"
+        mc ls local
+        ;;
+      "lsb")
+        echo -e "\033[1mmc ls local/{{bucket}}\033[0m"
+        echo "List all contents of {{bucket}}"
+        mc ls local/{{bucket}}
+        ;;
+      "rm")
+        echo -e "\033[1mmc rm --recursive --force local/{{bucket}}\033[0m"
+        echo "Remove all objects from bucket: {{bucket}}"
+        mc rm --recursive --force local/{{bucket}}
+        ;;
+      "rb")
+        echo -e "\033[1mmc rb --force local/{{bucket}}\033[0m"
+        echo "Remove bucket - {{bucket}} and all its contents"
+        mc rb --force local/{{bucket}}
+        ;;
+      *)
+        echo "Unknown command: {{command}}"
+        ;;
+    esac
+
 
 _py *args:
   uv run {{args}}

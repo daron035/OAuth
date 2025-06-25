@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from src.application.common.interfaces.uow import UnitOfWork
+from src.application.common.interfaces import UnitOfWork
 from src.infrastructure.postgres.uow import SQLAlchemyUoW
 
 

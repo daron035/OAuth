@@ -1,4 +1,4 @@
-from typing import Any, Generic, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from ..entities import Event
 from .base import Handler
@@ -16,7 +16,7 @@ class EventHandler(Handler[E_contra, Any], Protocol[E_contra]):
 EventHandlerType = type[EventHandler[E]] | EventHandler[E]
 
 
-class EventListener(Generic[E]):
+class EventListener[E]:
     def __init__(self, event: type[E], handler: EventHandlerType[E]):
         self._event = event
         self._handler = handler

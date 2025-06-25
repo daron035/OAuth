@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 
 ResultT = TypeVar("ResultT")
@@ -12,18 +12,18 @@ class Response:
 
 
 @dataclass(frozen=True)
-class OkResponse(Response, Generic[ResultT]):
+class OkResponse[ResultT](Response):
     status: int = 200
     result: ResultT | None = None
 
 
 @dataclass(frozen=True)
-class ErrorData(Generic[ErrorT]):
+class ErrorData[ErrorT]:
     title: str = "Unknown error occurred"
     data: ErrorT | None = None
 
 
 @dataclass(frozen=True)
-class ErrorResponse(Response, Generic[ErrorT]):
+class ErrorResponse[ErrorT](Response):
     status: int = 500
     error: ErrorData[ErrorT] = field(default_factory=ErrorData)

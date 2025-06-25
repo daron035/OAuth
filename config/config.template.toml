@@ -13,7 +13,15 @@ echo = true
 
 [redis]
 host = "localhost"
+port = 6379
 # password = null
+
+[s3]
+host = "localhost"
+port = 9000
+region = "us-east-1"
+access_key = "minioadmin"
+secret_key = "minioadmin"
 
 [telegram]
 TELEGRAM_API_KEY = "5511764565:AAEKLFWxhsVmvsW692-I6FHT8xx9ZS_G4uo"

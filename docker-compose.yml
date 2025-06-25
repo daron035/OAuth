@@ -12,6 +12,7 @@ services:
     networks:
       - oauth.postgres.network
       - oauth.redis.network
+      - oauth.minio.network
       - oauth.grafana.network
     environment:
       - CONFIG_PATH=${CONFIG_PATH:-./config/prod_config.template.toml}
@@ -38,8 +39,8 @@ services:
 
   redis:
     profiles: [ "all", "api" ]
-    image: redis:7.4
     container_name: oauth.redis
+    image: redis:7.4
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -128,10 +129,27 @@ services:
     ports:
       - "5050:80"
 
+  minio:
+    profiles: [ "all", "minio" ]
+    container_name: oauth.minio
+    image: minio/minio
+    restart: unless-stopped
+    ports:
+      - "${MINIO_ADDRESS}:9000"
+      - "${MINIO_CONSOLE_ADDRESS}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    networks:
+      - oauth.minio.network
+    volumes:
+      - oauth.minio.data:/data
+
   grafana:
     profiles: [ "all", "grafana" ]
-    image: grafana/grafana:12.0.1
     container_name: oauth.grafana
+    image: grafana/grafana:12.0.1
     hostname: oauth.grafana
     restart: unless-stopped
     expose:
@@ -153,8 +171,8 @@ services:
 
   loki:
     profiles: [ "all", "grafana" ]
-    image: grafana/loki:3.5.1
     container_name: oauth.loki
+    image: grafana/loki:3.5.1
     hostname: oauth.loki
     expose:
       - "3100"
@@ -168,8 +186,8 @@ services:
 
   vector:
     profiles: [ "all", "grafana" ]
-    image: timberio/vector:0.47.0-alpine
     container_name: oauth.vector
+    image: timberio/vector:0.47.0-alpine
     hostname: oauth.vector
     restart: unless-stopped
     expose:
@@ -186,8 +204,8 @@ services:
 
   prometheus:
     profiles: [ "all", "prometheus" ]
-    image: prom/prometheus:v3.4.0
     container_name: oauth.prometheus
+    image: prom/prometheus:v3.4.0
     restart: unless-stopped
     ports:
       - 9090:9090
@@ -198,8 +216,8 @@ services:
 
   node_exporter:
     profiles: [ "all", "prometheus" ]
-    image: prom/node-exporter:v1.9.1
     container_name: oauth.node_exporter
+    image: prom/node-exporter:v1.9.1
     hostname: oauth.node_exporter
     restart: unless-stopped
     pid: "host"
@@ -224,6 +242,8 @@ volumes:
     name: oauth.postgres.data
   oauth.redis.data:
     name: oauth.redis.data
+  oauth.minio.data:
+    name: oauth.minio.data
   oauth.grafana.data:
     name: oauth.grafana.data
   oauth.loki.data:
@@ -234,5 +254,7 @@ networks:
     name: oauth.postgres.network
   oauth.redis.network:
     name: oauth.redis.network
+  oauth.minio.network:
+    name: oauth.minio.network
   oauth.grafana.network:
     name: oauth.grafana.network

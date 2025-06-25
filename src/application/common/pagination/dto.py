@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from src.application.common.dto import DTO
 from src.domain.common.constants import Empty
@@ -36,6 +36,6 @@ class PaginationResult(DTO):
 
 
 @dataclass(frozen=True)
-class PaginatedItemsDTO(DTO, Generic[Item]):
+class PaginatedItemsDTO[Item](DTO):
     data: list[Item]
     pagination: PaginationResult

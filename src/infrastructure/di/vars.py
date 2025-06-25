@@ -1,5 +1,5 @@
 from contextvars import ContextVar
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from dishka import AsyncContainer
 
@@ -9,7 +9,7 @@ from src.infrastructure.mediator import Mediator
 T = TypeVar("T")
 
 
-class ContextProxy(Generic[T]):
+class ContextProxy[T]:
     def __init__(self, ctx_var: ContextVar[T]) -> None:
         self._ctx_var = ctx_var
 
