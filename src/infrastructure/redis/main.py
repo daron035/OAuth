@@ -1,11 +1,11 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 
 from redis.asyncio import Redis, from_url
 
 from .config import RedisConfig
 
 
-async def init_redis_pool(config: RedisConfig) -> AsyncIterator[Redis]:
+async def init_redis_pool(config: RedisConfig) -> AsyncGenerator[Redis]:
     session = from_url(
         f"redis://{config.host}:{config.port}",
         password=config.password,

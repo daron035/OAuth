@@ -26,4 +26,6 @@ prod_config.toml
 logs/
 .dockerignore
 .backups
+
 tmp/
+?.py

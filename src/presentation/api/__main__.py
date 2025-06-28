@@ -3,6 +3,7 @@ import logging
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from dishka import Scope, make_async_container
 
@@ -10,7 +11,7 @@ from src.infrastructure.config import Config
 from src.infrastructure.config_loader import load_config
 from src.infrastructure.di import config_provider, container_var, mediator_var
 from src.infrastructure.log.main import configure_logging
-from src.infrastructure.mediator.main import build_mediator
+from src.infrastructure.mediator.interface.mediator import Mediator
 from src.presentation.api.main import init_api, run_api
 
 
@@ -18,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def init_di(config: Config) -> AsyncIterator[None]:
+async def init_di(config: Config) -> AsyncGenerator[None]:
     container = make_async_container(config_provider(config), start_scope=Scope.RUNTIME)
 
     async with container(scope=Scope.APP) as app_container:
-        mediator = build_mediator(app_container)
+        mediator = await app_container.get(Mediator)
         container_var.set(app_container)
         mediator_var.set(mediator)
 

@@ -7,6 +7,7 @@ from src.application.common.interfaces.s3_client import S3Client
 from src.application.s3.commands.upload import UploadFileHandler
 from src.infrastructure.config import Config
 from src.infrastructure.config_loader import load_config
+from src.infrastructure.mediator.main import build_mediator
 from src.infrastructure.postgres.config import PostgresConfig
 from src.infrastructure.postgres.main import (
     build_sa_engine,
@@ -32,6 +33,9 @@ def config_provider(config: Config) -> Provider:
     provider.provide(lambda: config.redis, scope=Scope.APP, provides=RedisConfig)
     provider.provide(lambda: config.s3, scope=Scope.APP, provides=S3Config)
 
+    # Mediator
+    provider.provide(build_mediator, scope=Scope.APP)
+
     # Postgres
     provider.provide(build_sa_engine, scope=Scope.APP)
     provider.provide(build_sa_session_factory, scope=Scope.APP)
@@ -55,6 +59,7 @@ def config_provider(config: Config) -> Provider:
     # Handlers
     provider.provide(AuthorizeHandler, scope=Scope.REQUEST)
     provider.provide(UploadFileHandler, scope=Scope.REQUEST)
+
     return provider
 
 

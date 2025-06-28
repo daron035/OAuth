@@ -1,3 +1,5 @@
+from collections.abc import AsyncGenerator
+
 from dishka import AsyncContainer
 
 from src.application.authorization.commands.authorize import Authorize, AuthorizeHandler
@@ -8,12 +10,12 @@ from . import Mediator, MediatorImpl
 from .ioc import DishkaIoc
 
 
-def build_mediator(container: AsyncContainer) -> Mediator:
-    mediator = MediatorImpl(
+async def build_mediator(container: AsyncContainer) -> AsyncGenerator[Mediator, None]:
+    async with MediatorImpl(
         ioc=DishkaIoc(container),
         middlewares=[LoggingMiddleware()],
-    )
-    mediator.register_request_handler(Authorize, AuthorizeHandler)
-    mediator.register_request_handler(UploadFile, UploadFileHandler)
+    ) as mediator:
+        mediator.register_request_handler(Authorize, AuthorizeHandler)
+        mediator.register_request_handler(UploadFile, UploadFileHandler)
 
-    return mediator
+        yield mediator
